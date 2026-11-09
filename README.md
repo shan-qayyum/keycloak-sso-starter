@@ -2,6 +2,8 @@
 
 A small, readable starting point for single sign-on with **Keycloak** and **OpenID Connect**.
 
+**Status:** the full stack (Keycloak from `docker-compose.yml`, the demo app, and a browser login test) is exercised end to end in CI: [`.github/workflows/e2e.yml`](.github/workflows/e2e.yml).
+
 - `docker compose up` starts Keycloak 26.8.2 with a ready-made `demo` realm (one client, two roles, two users).
 - A tiny Express app logs in with **Authorization Code + PKCE**, shows the user's ID token claims and roles, protects `/admin` by role, and logs out through Keycloak's `end_session_endpoint`.
 - Tests cover config validation, the role-check middleware, and the full login flow against an in-process mock provider. CI runs them on every push.
@@ -117,7 +119,7 @@ npm install --no-save playwright-core@1.65.0
 npm run test:e2e        # uses your installed Google Chrome, headless
 ```
 
-It logs in as `bob` at desktop and phone widths, checks `/admin` and the claims page, logs out and confirms Keycloak shows the login form again (so the SSO session really ended), then checks `alice` gets a 403. Set `SCREENSHOT_DIR=screenshots` to save screenshots, `APP_URL` if the app isn't on port 3009, and `BROWSER_CHANNEL` to use a different browser.
+It logs in as `bob` at desktop and phone widths, checks `/admin` and the claims page, logs out and confirms Keycloak shows the login form again (so the SSO session really ended), then checks `alice` gets a 403. Set `SCREENSHOT_DIR=screenshots` to save screenshots, `APP_URL` if the app isn't on port 3009, and `BROWSER_CHANNEL` to use a different browser (set it to an empty string to use Playwright's bundled Chromium after `npx playwright-core install chromium`, which is what CI does).
 
 ## Using it with your own app
 

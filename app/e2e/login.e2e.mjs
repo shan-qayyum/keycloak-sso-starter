@@ -9,7 +9,8 @@
 // Env: APP_URL (default http://localhost:3009), ALICE_PASSWORD / BOB_PASSWORD
 // (default to the dev-only passwords from realm/demo-realm.json),
 // PLAYWRIGHT_CORE (module specifier or file:// URL, default "playwright-core"),
-// BROWSER_CHANNEL (default "chrome"), SCREENSHOT_DIR (optional).
+// BROWSER_CHANNEL (default "chrome"; empty = bundled Chromium), SCREENSHOT_DIR (optional).
+// CI runs this against the real Keycloak stack: .github/workflows/e2e.yml
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -22,7 +23,9 @@ const PASSWORDS = {
 const SHOTS = process.env.SCREENSHOT_DIR;
 
 const { chromium } = await import(process.env.PLAYWRIGHT_CORE ?? 'playwright-core');
-const browser = await chromium.launch({ channel: process.env.BROWSER_CHANNEL ?? 'chrome', headless: true });
+// BROWSER_CHANNEL="" uses Playwright's bundled Chromium (as in CI).
+const channel = process.env.BROWSER_CHANNEL ?? 'chrome';
+const browser = await chromium.launch({ channel: channel || undefined, headless: true });
 
 async function shot(page, name) {
   if (!SHOTS) return;

@@ -1,0 +1,75 @@
+name: E2E
+
+# Starts the real stack (Keycloak from docker-compose.yml + the demo app)
+# and runs the browser login test against it.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  keycloak-e2e:
+    name: Browser login against real Keycloak
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PLAYWRIGHT_CORE_VERSION: 1.65.0
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Start Keycloak and wait until healthy
+        run: docker compose up -d --wait --wait-timeout 180
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install app dependencies and Playwright Chromium
+        working-directory: app
+        run: |
+          npm ci
+          npm install --no-save "playwright-core@${PLAYWRIGHT_CORE_VERSION}"
+          npx playwright-core install --with-deps chromium
+
+      - name: Start the demo app
+        working-directory: app
+        run: |
+          cp .env.example .env
+          secret="$(node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))")"
+          sed -i "s|^SESSION_SECRET=.*|SESSION_SECRET=${secret}|" .env
+          nohup npm start > app.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3009/ > /dev/null; then echo "app is up"; exit 0; fi
+            sleep 1
+          done
+          echo "app did not start"; cat app.log; exit 1
+
+      - name: Run browser E2E test
+        working-directory: app
+        env:
+          APP_URL: http://localhost:3009
+          BROWSER_CHANNEL: ""
+          SCREENSHOT_DIR: screenshots
+        run: npm run test:e2e
+
+      - name: Logs on failure
+        if: failure()
+        run: |
+          docker compose ps
+          docker compose logs keycloak --tail 200
+          cat app/app.log || true
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-screenshots
+          path: app/screenshots
+          if-no-files-found: ignore
