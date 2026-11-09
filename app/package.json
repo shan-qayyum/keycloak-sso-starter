@@ -1,0 +1,25 @@
+{
+  "name": "keycloak-sso-demo-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Express demo app for keycloak-sso-starter: OIDC Authorization Code + PKCE login, claims, role-protected routes, logout.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node --env-file=.env src/server.js",
+    "test": "node --test \"test/*.test.js\"",
+    "test:e2e": "node e2e/login.e2e.mjs",
+    "dev:mock": "node scripts/mock-stack.js"
+  },
+  "dependencies": {
+    "express": "5.3.0",
+    "express-session": "1.19.0",
+    "openid-client": "6.8.9"
+  },
+  "devDependencies": {
+    "jose": "6.2.16"
+  }
+}
