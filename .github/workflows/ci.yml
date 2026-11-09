@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Unit + integration tests (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [22, 24]
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+      - run: npm test
+
+  compose:
+    name: Validate compose files and realm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: docker compose config (H2 dev setup)
+        run: docker compose -f docker-compose.yml config --quiet
+      - name: docker compose config (with Postgres override)
+        run: docker compose -f docker-compose.yml -f docker-compose.postgres.yml config --quiet
+      - name: Realm export is valid JSON
+        run: python3 -m json.tool realm/demo-realm.json > /dev/null
