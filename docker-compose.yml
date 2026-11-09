@@ -1,0 +1,43 @@
+# Keycloak in dev mode with the demo realm imported on start.
+# Dev mode = in-container H2 database, HTTP, relaxed hostname checks.
+# NOT for production; see "Production hardening" in README.md.
+#
+#   docker compose up -d
+#   Admin console: http://localhost:8089/admin   (bootstrap admin from .env)
+#   Demo realm:    http://localhost:8089/realms/demo
+#
+# For a persistent Postgres database instead of H2:
+#   docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d
+
+name: keycloak-sso-starter
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.2
+    command: ["start-dev", "--import-realm"]
+    environment:
+      # Bootstrap admin for the master realm. Dev-only defaults; override in .env.
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:-admin-dev-only}
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      # Bound to loopback only so the dev server isn't reachable from your LAN.
+      # If you change the host port, update OIDC_ISSUER in app/.env too.
+      - "127.0.0.1:${KEYCLOAK_PORT:-8089}:8080"
+    volumes:
+      # Every *.json here is imported on start; realms that already exist are skipped.
+      - ./realm:/opt/keycloak/data/import:ro
+    healthcheck:
+      # The image ships without curl, so use bash's /dev/tcp against the management port.
+      test:
+        - CMD
+        - bash
+        - -c
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/9000 &&
+          printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          grep -q '200 OK' <&3
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
